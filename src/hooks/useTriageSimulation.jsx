@@ -61,7 +61,9 @@ export const TriageProvider = ({ children }) => {
     const _iniciarAtencion = (sId, pId, pacs, sals, duracion) => {
         sals[sId].actual = pId;
         pacs[pId].estado = 1;
-        pacs[pId].finAtencion = duracion;   // steps remaining
+        if (pacs[pId].finAtencion === null || pacs[pId].finAtencion === undefined) {
+            pacs[pId].finAtencion = duracion;
+        }
     };
 
     const _ocuparSlot = (pId, sId, pacs, sals) => {
@@ -171,6 +173,11 @@ export const TriageProvider = ({ children }) => {
             return null;
         }
 
+        if (pacientesHoy.some(p => p.nombre.trim().toLowerCase() === nombre.trim().toLowerCase())) {
+            alert(`El paciente "${nombre}" ya fue registrado el día de hoy.`);
+            return null;
+        }
+
         const nuevoPaciente = {
             id: pacientes.length,
             nombre,
@@ -190,32 +197,40 @@ export const TriageProvider = ({ children }) => {
         let logs = [...eventLog];
 
         if (nivel === 0) {
-            // Resucitación: buscar sala de emergencia con cupo, o libre, o preempcionar
-            let salaAsignada = sals.find(s => s.tipo === 0 && s.ocupacion < CAPACIDAD_SALA)
-                || sals.find(s => s.ocupacion === 0);
-            if (salaAsignada) {
-                sals[salaAsignada.id].tipo = 0;
-                _ocuparSlot(nuevoPaciente.id, salaAsignada.id, pacs, sals);
-                logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
-            } else {
-                // Preempcionar
-                let salaPreemp = sals.find(s => s.actual !== null && s.tipo === 0) || sals.find(s => s.actual !== null);
-                if (salaPreemp) {
-                    const vicId = salaPreemp.actual;
-                    logs = _addLog(logs, `Sala ${salaPreemp.id + 1}: ${pacs[vicId].nombre} desplazado por ${nombre} (Resucitación).`);
-                    pacs[vicId].estado = 0;
-                    sals[salaPreemp.id].slots[pacs[vicId].slot] = null;
-                    sals[salaPreemp.id].ocupacion--;
-                    pacs[vicId].sala = null;
-                    pacs[vicId].slot = null;
-                    sals[salaPreemp.id].actual = null;
-                    sals[salaPreemp.id].tipo = 0;
-                    _ocuparSlot(nuevoPaciente.id, salaPreemp.id, pacs, sals);
-                    logs = _addLog(logs, `Sala ${salaPreemp.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
-                } else {
-                    logs = _addLog(logs, `${nombre} (Resucitación) en espera: sin cupo disponible.`);
-                }
+            nuevoPaciente.duracion = 5;
+            let salaElegida = sals.find(s => s.ocupacion === 0 && s.tipo === 0) 
+                           || sals.find(s => s.ocupacion < CAPACIDAD_SALA && s.tipo === 0)
+                           || sals.find(s => s.tipo === 0)
+                           || sals[0];
+                           
+            salaElegida.tipo = 0;
+            const vicId = salaElegida.actual;
+            const slotLibre = salaElegida.slots.findIndex(x => x === null);
+            
+            if (vicId !== null) {
+                pacs[vicId].estado = 0;
+                logs = _addLog(logs, `Sala ${salaElegida.id + 1}: Atención de ${pacs[vicId].nombre} pausada por Resucitación.`);
             }
+            
+            let targetSlot = slotLibre;
+            
+            if (slotLibre === -1) {
+                const waitingSlotIdx = salaElegida.slots.findIndex(sid => sid !== null && sid !== vicId);
+                const expulsadoId = salaElegida.slots[waitingSlotIdx];
+                pacs[expulsadoId].sala = null;
+                pacs[expulsadoId].slot = null;
+                salaElegida.ocupacion--;
+                targetSlot = waitingSlotIdx;
+                logs = _addLog(logs, `Sala ${salaElegida.id + 1}: ${pacs[expulsadoId].nombre} devuelto a espera general por falta de cupo.`);
+            }
+            
+            salaElegida.slots[targetSlot] = nuevoPaciente.id;
+            if (slotLibre !== -1) salaElegida.ocupacion++;
+            nuevoPaciente.sala = salaElegida.id;
+            nuevoPaciente.slot = targetSlot;
+            
+            _iniciarAtencion(salaElegida.id, nuevoPaciente.id, pacs, sals, nuevoPaciente.duracion);
+            logs = _addLog(logs, `Sala ${salaElegida.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
         } else {
             const reqTipo = _determineTipoSala(nivel);
             let salaAsignada = sals.find(s => s.ocupacion === 0);
