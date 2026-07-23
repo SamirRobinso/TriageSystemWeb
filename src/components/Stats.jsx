@@ -42,7 +42,7 @@ export default function Stats() {
         </div>
         <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#ef4444' }}>{trasladados}</div>
-          <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>En Quirófano</div>
+          <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Internados</div>
         </div>
       </div>
 
