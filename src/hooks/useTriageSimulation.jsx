@@ -116,7 +116,7 @@ export const TriageProvider = ({ children }) => {
                 logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`);
 
                 if (p.trasladoQuirofano) {
-                    logs = _addLog(logs, `${p.nombre} trasladado a quirófano.`);
+                    logs = _addLog(logs, `${p.nombre} está en quirófano.`);
                     p.estado = 3;
                     p.trasladoQuirofano = false;
                 } else {
@@ -288,7 +288,7 @@ export const TriageProvider = ({ children }) => {
             p.estado = 2;
             logs = _addLog(logs, `${p.nombre} fue liberado manualmente.`);
         } else {
-            alert("El paciente ya fue atendido o trasladado.");
+            alert("El paciente ya fue atendido o está en quirófano.");
             return;
         }
 

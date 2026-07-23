@@ -73,7 +73,7 @@ export default function DailyReport() {
         </div>
         <div className="card" style={{ padding: '1.25rem', textAlign: 'center' }}>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: '#ef4444' }}>{trasladadosDia}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Trasladados</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>En Quirófano</div>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export default function DailyReport() {
               <th>Atendidos</th>
               <th>En Atención</th>
               <th>En Espera</th>
-              <th>Trasladados</th>
+              <th>En Quirófano</th>
             </tr>
           </thead>
           <tbody>

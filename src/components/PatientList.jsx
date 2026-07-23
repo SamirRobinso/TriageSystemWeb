@@ -12,7 +12,7 @@ export default function PatientList() {
       case 2:
         return 'Atendido';
       case 3:
-        return 'Trasladado';
+        return 'En Quirófano';
       default:
         return 'Desconocido';
     }

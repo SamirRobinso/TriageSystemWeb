@@ -56,6 +56,7 @@ export default function Stats() {
       <div className="card">
         <h3 style={{ marginBottom: '1rem' }}>Información de Jornada</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Día Actual: <strong style={{ color: 'var(--text-main)' }}>{diaActual}</strong></p>
+        <p style={{ color: 'var(--text-muted)' }}>Pacientes en Quirófano: <strong style={{ color: '#ef4444' }}>{trasladados}</strong></p>
       </div>
     </div>
   );
