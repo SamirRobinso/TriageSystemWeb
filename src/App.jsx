@@ -7,11 +7,11 @@ import PatientList from './components/PatientList';
 import EventLog from './components/EventLog';
 import Stats from './components/Stats';
 import DailyReport from './components/DailyReport';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, FastForward } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('register');
-  const { diaActual, resetSimulacion } = useTriage();
+  const { diaActual, resetSimulacion, avanzarTiempo } = useTriage();
 
   return (
     <div className="app-container">
@@ -24,6 +24,15 @@ function App() {
             <p className="subtitle">Simulación de Recepción y Salas</p>
           </div>
           <div className="time-controls">
+            <button
+              className="btn-primary"
+              onClick={avanzarTiempo}
+              title="Avanzar 5 Minutos"
+              style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--primary)' }}
+            >
+              <FastForward size={16} />
+              <span>Avanzar 5 min</span>
+            </button>
             <button
               className="btn-outline"
               onClick={resetSimulacion}

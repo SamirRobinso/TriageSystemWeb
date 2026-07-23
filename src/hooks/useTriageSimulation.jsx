@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const TriageContext = createContext();
 
@@ -51,23 +51,6 @@ export const TriageProvider = ({ children }) => {
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ diaActual, pacientes, eventLog, salas }));
     }, [diaActual, pacientes, eventLog, salas]);
-
-    // ─── Automatic Background Timer ──────────────────────────────────────────
-    const avanzarTiempoRef = useRef();
-
-    useEffect(() => {
-        avanzarTiempoRef.current = avanzarTiempo;
-    });
-
-    useEffect(() => {
-        // Runs every 2 seconds, subtracting 5 "minutes" of attention
-        const interval = setInterval(() => {
-            if (avanzarTiempoRef.current) {
-                avanzarTiempoRef.current();
-            }
-        }, 2000);
-        return () => clearInterval(interval);
-    }, []);
 
     // ─── Internal helpers that receive current state as arguments ────────────
 
