@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const TriageContext = createContext();
 
@@ -7,6 +7,7 @@ const MAX_PACIENTES_POR_DIA = 12;
 const CANTIDAD_SALAS = 5;
 const CAPACIDAD_SALA = 2;
 const PASO_TIEMPO_DEFAULT = 5;
+const STORAGE_KEY = 'triage_digital_state_v2';
 
 const PREGUNTAS = [
     "Presenta paro cardiaco, paro respiratorio, shock, sangrado grave o trauma severo?",
@@ -21,22 +22,62 @@ const COLOR_NIVEL = ["Rojo", "Naranja", "Amarillo", "Verde", "Azul"];
 const TIEMPO_TEXTO = ["Atención inmediata", "10-15 minutos", "60 minutos", "120 minutos", "240 minutos"];
 const HEX_COLORES = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6"];
 
+const defaultSalas = [
+    { id: 0, tipo: 0, ocupacion: 0, slots: [null, null], actual: null },
+    { id: 1, tipo: 0, ocupacion: 0, slots: [null, null], actual: null },
+    { id: 2, tipo: 1, ocupacion: 0, slots: [null, null], actual: null },
+    { id: 3, tipo: 1, ocupacion: 0, slots: [null, null], actual: null },
+    { id: 4, tipo: 2, ocupacion: 0, slots: [null, null], actual: null }
+];
+
 export const TriageProvider = ({ children }) => {
-    const [tiempoAbsoluto, setTiempoAbsoluto] = useState(0);
-    const [diaActual, setDiaActual] = useState(1);
-    const [pacientes, setPacientes] = useState([]);
-    const [eventLog, setEventLog] = useState([]);
-    
-    const [salas, setSalas] = useState([
-        { id: 0, tipo: 0, ocupacion: 0, slots: [null, null], actual: null },
-        { id: 1, tipo: 0, ocupacion: 0, slots: [null, null], actual: null },
-        { id: 2, tipo: 1, ocupacion: 0, slots: [null, null], actual: null },
-        { id: 3, tipo: 1, ocupacion: 0, slots: [null, null], actual: null },
-        { id: 4, tipo: 2, ocupacion: 0, slots: [null, null], actual: null }
-    ]);
+    // Helper to get initial state from localStorage
+    const getInitialState = () => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.error("Error loading state from localStorage", e);
+        }
+        return null;
+    };
+
+    const savedState = getInitialState();
+
+    const [tiempoAbsoluto, setTiempoAbsoluto] = useState(savedState?.tiempoAbsoluto ?? 0);
+    const [contadorGlobal, setContadorGlobal] = useState(savedState?.contadorGlobal ?? 0);
+    const [diaActual, setDiaActual] = useState(savedState?.diaActual ?? 1);
+    const [pacientes, setPacientes] = useState(savedState?.pacientes ?? []);
+    const [eventLog, setEventLog] = useState(savedState?.eventLog ?? []);
+    const [salas, setSalas] = useState(savedState?.salas ?? defaultSalas);
+
+    // Persist to localStorage whenever state changes
+    useEffect(() => {
+        const stateToSave = {
+            tiempoAbsoluto,
+            contadorGlobal,
+            diaActual,
+            pacientes,
+            eventLog,
+            salas
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [tiempoAbsoluto, contadorGlobal, diaActual, pacientes, eventLog, salas]);
 
     const addLog = (msg) => {
         setEventLog(prev => [{ time: tiempoAbsoluto, msg }, ...prev]);
+    };
+
+    const resetSimulacion = () => {
+        if (window.confirm("¿Seguro que deseas reiniciar toda la simulación? Se borrarán los datos de pacientes y tiempo.")) {
+            localStorage.removeItem(STORAGE_KEY);
+            setTiempoAbsoluto(0);
+            setContadorGlobal(0);
+            setDiaActual(1);
+            setPacientes([]);
+            setEventLog([]);
+            setSalas(defaultSalas);
+        }
     };
 
     const determineTipoSalaRequerido = (nivel) => (nivel <= 1 ? 0 : 1);
@@ -138,6 +179,8 @@ export const TriageProvider = ({ children }) => {
 
     const avanzarTiempo = () => {
         const nuevoTiempo = tiempoAbsoluto + PASO_TIEMPO_DEFAULT;
+        const nuevoContadorDia = contadorGlobal + PASO_TIEMPO_DEFAULT;
+
         let updatedPacientes = [...pacientes];
         let updatedSalas = [...salas];
         let cupoLiberado = false;
@@ -195,17 +238,20 @@ export const TriageProvider = ({ children }) => {
         setPacientes(updatedPacientes);
         setSalas(updatedSalas);
         setTiempoAbsoluto(nuevoTiempo);
+        setContadorGlobal(nuevoContadorDia);
     };
 
     return (
         <TriageContext.Provider value={{
             tiempoAbsoluto,
+            contadorGlobal,
             diaActual,
             pacientes,
             salas,
             eventLog,
             avanzarTiempo,
             registrarPaciente,
+            resetSimulacion,
             PREGUNTAS,
             TIPO_URGENCIA,
             COLOR_NIVEL,
