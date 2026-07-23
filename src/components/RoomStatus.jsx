@@ -1,7 +1,7 @@
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function RoomStatus() {
-  const { salas, pacientes, HEX_COLORES } = useTriage();
+  const { salas, pacientes, HEX_COLORES, liberarPaciente } = useTriage();
 
   const getTipoSalaText = (tipo) => {
     switch (tipo) {
@@ -40,13 +40,20 @@ export default function RoomStatus() {
                 const isActual = sala.actual === pId;
                 
                 return (
-                  <div key={slotIndex} className="slot" style={{ borderLeft: `4px solid ${HEX_COLORES[paciente.nivel]}` }}>
+                  <div key={slotIndex} className="slot" style={{ borderLeft: `4px solid ${HEX_COLORES[paciente.nivel]}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="patient-in-slot">
                       <span className="patient-name">{paciente.nombre}</span>
                       <span className="patient-status" style={{ color: isActual ? 'var(--primary)' : 'var(--text-muted)' }}>
                         {isActual ? 'En atención' : 'En espera dentro de la sala'}
                       </span>
                     </div>
+                    <button
+                      className="btn-outline"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderColor: '#eab308', color: '#eab308' }}
+                      onClick={() => liberarPaciente(paciente.id)}
+                    >
+                      Liberar
+                    </button>
                   </div>
                 );
               })}

@@ -1,7 +1,7 @@
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function PatientList() {
-  const { pacientes, TIPO_URGENCIA, HEX_COLORES, tiempoAbsoluto } = useTriage();
+  const { pacientes, TIPO_URGENCIA, HEX_COLORES, tiempoAbsoluto, liberarPaciente } = useTriage();
 
   const getEstadoTexto = (paciente) => {
     switch (paciente.estado) {
@@ -36,6 +36,7 @@ export default function PatientList() {
                 <th>Día</th>
                 <th>Nivel</th>
                 <th>Estado</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -51,6 +52,17 @@ export default function PatientList() {
                   </td>
                   <td style={{ color: p.estado === 1 ? 'var(--primary)' : 'inherit' }}>
                     {getEstadoTexto(p)}
+                  </td>
+                  <td>
+                    {(p.estado === 0 || p.estado === 1) && (
+                      <button
+                        className="btn-outline"
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderColor: '#eab308', color: '#eab308' }}
+                        onClick={() => liberarPaciente(p.id)}
+                      >
+                        Liberar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

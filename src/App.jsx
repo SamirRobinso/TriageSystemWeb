@@ -6,11 +6,12 @@ import RoomStatus from './components/RoomStatus';
 import PatientList from './components/PatientList';
 import EventLog from './components/EventLog';
 import Stats from './components/Stats';
-import { Clock, RotateCcw, Timer } from 'lucide-react';
+import DailyReport from './components/DailyReport';
+import { Clock, RotateCcw, Timer, Play, Pause } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('register');
-  const { tiempoAbsoluto, contadorGlobal, diaActual, avanzarTiempo, resetSimulacion } = useTriage();
+  const { tiempoAbsoluto, contadorGlobal, diaActual, avanzarTiempo, resetSimulacion, isRunning, toggleRunning } = useTriage();
 
   return (
     <div className="app-container">
@@ -31,8 +32,17 @@ function App() {
               <Timer className="icon" size={18} style={{ color: '#22c55e' }} />
               <span>Total: {tiempoAbsoluto} min</span>
             </div>
-            <button className="btn-primary" onClick={avanzarTiempo}>
+            <button className="btn-primary" onClick={avanzarTiempo} title="Avanzar 5 minutos manualmente">
               Avanzar 5 min
+            </button>
+            <button 
+              className="btn-outline"
+              onClick={toggleRunning}
+              title={isRunning ? 'Pausar simulación automática' : 'Iniciar simulación automática'}
+              style={{ padding: '0.6rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: isRunning ? '#eab308' : '#22c55e', color: isRunning ? '#eab308' : '#22c55e' }}
+            >
+              {isRunning ? <Pause size={16} /> : <Play size={16} />}
+              <span>{isRunning ? 'Pausar' : 'Auto'}</span>
             </button>
             <button 
               className="btn-outline" 
@@ -51,6 +61,7 @@ function App() {
           {activeTab === 'rooms' && <RoomStatus />}
           {activeTab === 'patients' && <PatientList />}
           {activeTab === 'stats' && <Stats />}
+          {activeTab === 'report' && <DailyReport />}
         </div>
       </main>
 

@@ -241,6 +241,75 @@ export const TriageProvider = ({ children }) => {
         setContadorGlobal(nuevoContadorDia);
     };
 
+    const [isRunning, setIsRunning] = useState(false);
+    const [speed, setSpeed] = useState(2000); // 2s per 5 min step
+
+    // Auto timer effect
+    useEffect(() => {
+        let interval = null;
+        if (isRunning) {
+            interval = setInterval(() => {
+                avanzarTiempo();
+            }, speed);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isRunning, speed, tiempoAbsoluto, pacientes, salas]);
+
+    const toggleRunning = () => setIsRunning(prev => !prev);
+
+    const liberarPaciente = (pId) => {
+        let updatedPacientes = [...pacientes];
+        let updatedSalas = [...salas];
+        const p = updatedPacientes[pId];
+
+        if (!p) return;
+
+        if (p.estado === 1) { // Being attended
+            const sId = p.sala;
+            if (sId !== null && sId !== undefined) {
+                const sala = updatedSalas[sId];
+                sala.slots[p.slot] = null;
+                sala.ocupacion = Math.max(0, sala.ocupacion - 1);
+                if (sala.actual === pId) sala.actual = null;
+                p.sala = null;
+                p.slot = null;
+                p.estado = 2; // Atendido
+                addLog(`Paciente ${p.nombre} fue liberado manualmente de la Sala ${sId + 1}.`);
+
+                // Promote waiting
+                const sigSlot = sala.slots.findIndex(sid => sid !== null && updatedPacientes[sid].estado === 0);
+                if (sigSlot !== -1) {
+                    iniciarAtencion(sId, sala.slots[sigSlot], updatedPacientes, updatedSalas);
+                }
+            }
+        } else if (p.estado === 0) { // Waiting
+            if (p.sala !== null && p.sala !== undefined) {
+                const sId = p.sala;
+                const sala = updatedSalas[sId];
+                sala.slots[p.slot] = null;
+                sala.ocupacion = Math.max(0, sala.ocupacion - 1);
+                p.sala = null;
+                p.slot = null;
+            }
+            p.estado = 2; // Atendido (liberación administrativa)
+            addLog(`Paciente ${p.nombre} fue liberado manualmente (excepción administrativa).`);
+        } else {
+            alert("El paciente no se encuentra en estado de espera ni de atención.");
+            return;
+        }
+
+        setPacientes(updatedPacientes);
+        setSalas(updatedSalas);
+    };
+
+    const finalizarDia = () => {
+        addLog(`Día ${diaActual} finalizado. Reloj del día reiniciado a 0 min.`);
+        setDiaActual(prev => prev + 1);
+        setContadorGlobal(0);
+    };
+
     return (
         <TriageContext.Provider value={{
             tiempoAbsoluto,
@@ -249,8 +318,14 @@ export const TriageProvider = ({ children }) => {
             pacientes,
             salas,
             eventLog,
+            isRunning,
+            toggleRunning,
+            speed,
+            setSpeed,
             avanzarTiempo,
             registrarPaciente,
+            liberarPaciente,
+            finalizarDia,
             resetSimulacion,
             PREGUNTAS,
             TIPO_URGENCIA,
