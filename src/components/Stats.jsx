@@ -9,12 +9,25 @@ export default function Stats() {
   let atendidos = 0;
   let trasladados = 0;
 
+  let sumaTiempos = 0;
+  let conteoPacientesEsperaYAtencion = 0;
+
   pacientes.forEach(p => {
     if (p.estado === 0) enEspera++;
     else if (p.estado === 1) enAtencion++;
     else if (p.estado === 2) atendidos++;
     else if (p.estado === 3) trasladados++;
+
+    if (p.estado === 0 || p.estado === 1) {
+      const tiempoRestante = p.estado === 1 ? Math.max(0, p.finAtencion ?? 0) : (p.duracion ?? 0);
+      sumaTiempos += tiempoRestante;
+      conteoPacientesEsperaYAtencion++;
+    }
   });
+
+  const promedioEspera = conteoPacientesEsperaYAtencion > 0 
+    ? Math.round(sumaTiempos / conteoPacientesEsperaYAtencion) 
+    : 0;
 
   const ocupadosTotal = salas.reduce((acc, s) => acc + s.ocupacion, 0);
   const cuposTotales = salas.length * 2; // 5 salas * 2
@@ -57,6 +70,20 @@ export default function Stats() {
         </div>
       </div>
       
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '1rem' }}>Promedio Estimado de Espera</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--primary)' }}>
+            ~{promedioEspera}
+          </div>
+          <div style={{ color: 'var(--text-muted)' }}>
+            minutos por paciente
+            <br />
+            <span style={{ fontSize: '0.85rem' }}>(Calculado con {conteoPacientesEsperaYAtencion} pacientes pendientes)</span>
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <h3 style={{ marginBottom: '1rem' }}>Información de Jornada</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Día Actual: <strong style={{ color: 'var(--text-main)' }}>{diaActual}</strong></p>
