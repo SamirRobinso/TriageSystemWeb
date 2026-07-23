@@ -74,10 +74,10 @@ export default function Stats() {
         <h3 style={{ marginBottom: '1rem' }}>Promedio Estimado de Espera</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--primary)' }}>
-            {conteoPacientesEsperaYAtencion === 0 ? "N/A" : `~${promedioEspera}`}
+            {conteoPacientesEsperaYAtencion === 0 ? "0" : `~${promedioEspera}`}
           </div>
           <div style={{ color: 'var(--text-muted)' }}>
-            {conteoPacientesEsperaYAtencion === 0 ? "Sin pacientes en espera o atención" : "minutos por paciente"}
+            {conteoPacientesEsperaYAtencion === 0 ? "min — Atención inmediata" : "minutos por paciente"}
             {conteoPacientesEsperaYAtencion > 0 && (
               <>
                 <br />
