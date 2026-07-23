@@ -6,7 +6,7 @@ const TriageContext = createContext();
 const MAX_PACIENTES_POR_DIA = 12;
 const CAPACIDAD_SALA = 2;
 const PASO_TIEMPO_DEFAULT = 5;
-const STORAGE_KEY = 'triage_digital_state_v3';
+const STORAGE_KEY = 'triage_digital_state_v4';
 
 const PREGUNTAS = [
     "Presenta paro cardiaco, paro respiratorio, shock, sangrado grave o trauma severo?",
@@ -202,7 +202,6 @@ export const TriageProvider = ({ children }) => {
         let logs = [...eventLog];
 
         if (nivel === 0) {
-            nuevoPaciente.duracion = 5;
             let salaElegida = sals.find(s => s.ocupacion === 0 && s.tipo === 0) 
                            || sals.find(s => s.ocupacion < CAPACIDAD_SALA && s.tipo === 0)
                            || sals.find(s => s.tipo === 0)
@@ -220,6 +219,7 @@ export const TriageProvider = ({ children }) => {
             let targetSlot = slotLibre;
             
             if (slotLibre === -1) {
+                // Sala llena: expulsar al paciente en espera (no el que está siendo atendido)
                 const waitingSlotIdx = salaElegida.slots.findIndex(sid => sid !== null && sid !== vicId);
                 const expulsadoId = salaElegida.slots[waitingSlotIdx];
                 pacs[expulsadoId].sala = null;
@@ -229,12 +229,14 @@ export const TriageProvider = ({ children }) => {
                 logs = _addLog(logs, `Sala ${salaElegida.id + 1}: ${pacs[expulsadoId].nombre} devuelto a espera general por falta de cupo.`);
             }
             
+            // FIX: asignar slot en el array pacs (no en nuevoPaciente que ya fue copiado)
             salaElegida.slots[targetSlot] = nuevoPaciente.id;
             if (slotLibre !== -1) salaElegida.ocupacion++;
-            nuevoPaciente.sala = salaElegida.id;
-            nuevoPaciente.slot = targetSlot;
+            pacs[nuevoPaciente.id].sala = salaElegida.id;
+            pacs[nuevoPaciente.id].slot = targetSlot;
+            pacs[nuevoPaciente.id].duracion = 5;
             
-            _iniciarAtencion(salaElegida.id, nuevoPaciente.id, pacs, sals, nuevoPaciente.duracion);
+            _iniciarAtencion(salaElegida.id, nuevoPaciente.id, pacs, sals, 5);
             logs = _addLog(logs, `Sala ${salaElegida.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
         } else {
             const reqTipo = _determineTipoSala(nivel);
