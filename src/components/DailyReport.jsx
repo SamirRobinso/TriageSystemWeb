@@ -117,7 +117,7 @@ export default function DailyReport() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {pacientesHoy.map(p => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: 'var(--bg-card)', borderRadius: '0.5rem' }}>
-                <span><strong>{p.nombre}</strong></span>
+                <span><strong>{p.nombre}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>({p.nhc})</span></span>
                 <span className="level-badge" style={{ backgroundColor: HEX_COLORES[p.nivel] }}>{TIPO_URGENCIA[p.nivel]}</span>
               </div>
             ))}

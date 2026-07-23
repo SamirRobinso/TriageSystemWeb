@@ -155,21 +155,22 @@ export const TriageProvider = ({ children }) => {
 
     // ─── Registrar paciente ──────────────────────────────────────────────────
 
-    const registrarPaciente = (nombre, nivel) => {
+    const registrarPaciente = (nombre, nhc, nivel) => {
         const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
         if (pacientesHoy.length >= MAX_PACIENTES_POR_DIA) {
             alert(`Límite diario de ${MAX_PACIENTES_POR_DIA} pacientes alcanzado.`);
             return null;
         }
 
-        if (pacientesHoy.some(p => p.nombre.toLowerCase().trim() === nombre.toLowerCase().trim())) {
-            alert(`El paciente "${nombre}" ya fue registrado el día de hoy.`);
+        if (pacientesHoy.some(p => p.nhc.trim() === nhc.trim())) {
+            alert(`El NHC "${nhc}" ya fue registrado el día de hoy.`);
             return null;
         }
 
         const nuevoPaciente = {
             id: pacientes.length,
             nombre,
+            nhc,
             nivel,
             dia: diaActual,
             estado: 0,

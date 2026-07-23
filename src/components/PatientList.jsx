@@ -32,6 +32,7 @@ export default function PatientList() {
             <thead style={{ backgroundColor: 'var(--bg-panel)' }}>
               <tr>
                 <th>Nº</th>
+                <th>NHC</th>
                 <th>Nombre</th>
                 <th>Día</th>
                 <th>Nivel</th>
@@ -43,6 +44,9 @@ export default function PatientList() {
               {pacientes.map((p, i) => (
                 <tr key={p.id}>
                   <td>{i + 1}</td>
+                  <td>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{p.nhc}</span>
+                  </td>
                   <td style={{ fontWeight: 500 }}>{p.nombre}</td>
                   <td>{p.dia}</td>
                   <td>

@@ -4,7 +4,8 @@ import { useTriage } from '../hooks/useTriageSimulation';
 export default function RegistrationForm() {
   const { pacientes, diaActual, registrarPaciente, PREGUNTAS, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES, TIEMPO_TEXTO } = useTriage();
   const [nombre, setNombre] = useState('');
-  const [paso, setPaso] = useState(0); // 0 = nombre, 1 = preguntas, 2 = resultado
+  const [nhc, setNhc] = useState('');
+  const [paso, setPaso] = useState(0); // 0 = nombre/nhc, 1 = preguntas, 2 = resultado
   const [preguntaActual, setPreguntaActual] = useState(0);
   const [nivelCalculado, setNivelCalculado] = useState(null);
   const [pacienteRegistrado, setPacienteRegistrado] = useState(null);
@@ -12,11 +13,13 @@ export default function RegistrationForm() {
   const startTriage = (e) => {
     e.preventDefault();
     const cleanName = nombre.trim();
+    const cleanNhc = nhc.trim();
     if (!cleanName) return alert("Ingrese un nombre válido");
+    if (!cleanNhc) return alert("Ingrese un NHC válido");
 
     const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
-    if (pacientesHoy.some(p => p.nombre.toLowerCase().trim() === cleanName.toLowerCase())) {
-        return alert(`El paciente "${cleanName}" ya fue registrado el día de hoy. Use otro nombre o un identificador único.`);
+    if (pacientesHoy.some(p => p.nhc.trim() === cleanNhc)) {
+        return alert(`El paciente con NHC "${cleanNhc}" ya fue registrado el día de hoy.`);
     }
 
     setPaso(1);
@@ -37,19 +40,21 @@ export default function RegistrationForm() {
 
   const finalizarTriage = (nivel) => {
     setNivelCalculado(nivel);
-    const paciente = registrarPaciente(nombre, nivel);
+    const paciente = registrarPaciente(nombre.trim(), nhc.trim(), nivel);
     if (paciente) {
       setPacienteRegistrado(paciente);
       setPaso(2);
     } else {
-      // Limit reached
+      // Limit reached or duplicate
       setPaso(0);
       setNombre('');
+      setNhc('');
     }
   };
 
   const resetForm = () => {
     setNombre('');
+    setNhc('');
     setPaso(0);
     setNivelCalculado(null);
     setPacienteRegistrado(null);
@@ -61,6 +66,17 @@ export default function RegistrationForm() {
       
       {paso === 0 && (
         <form onSubmit={startTriage}>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">Número de Historia Clínica (NHC)</label>
+            <input 
+              type="text" 
+              className="form-input" 
+              value={nhc} 
+              onChange={e => setNhc(e.target.value)}
+              placeholder="Ej. 1700000000"
+              autoFocus
+            />
+          </div>
           <div className="form-group">
             <label className="form-label">Nombre del Paciente</label>
             <input 
@@ -69,7 +85,6 @@ export default function RegistrationForm() {
               value={nombre} 
               onChange={e => setNombre(e.target.value)}
               placeholder="Ej. Juan Perez"
-              autoFocus
             />
           </div>
           <button type="submit" className="btn-primary">Iniciar Triage</button>
@@ -99,6 +114,7 @@ export default function RegistrationForm() {
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Triage Completado</h3>
             <p>Paciente: <strong>{pacienteRegistrado.nombre}</strong></p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>NHC: {pacienteRegistrado.nhc}</p>
           </div>
           
           <div style={{
