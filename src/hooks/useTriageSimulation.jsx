@@ -113,38 +113,42 @@ export const TriageProvider = ({ children }) => {
 
             if (p.finAtencion <= 0) {
                 // Finalizar atención
-                logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`);
+                const slotAnterior = p.slot;
 
                 if (p.trasladoQuirofano) {
-                    logs = _addLog(logs, `${p.nombre} está en quirófano.`);
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} atendido — trasladado a quirófano.`);
                     p.estado = 3;
                     p.trasladoQuirofano = false;
                 } else {
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`);
                     p.estado = 2;
                 }
 
-                sala.slots[p.slot] = null;
+                // Liberar slot y sala
+                sala.slots[slotAnterior] = null;
                 sala.ocupacion = Math.max(0, sala.ocupacion - 1);
                 p.sala = null;
                 p.slot = null;
                 sala.actual = null;
                 cupoLiberado = true;
 
-                // Promover compañero en espera
-                const sigSlotIdx = sala.slots.findIndex(sid => sid !== null && pacs[sid].estado === 0);
+                // Promover compañero en espera (solo estado 0 genuino)
+                const sigSlotIdx = sala.slots.findIndex(sid => sid !== null && pacs[sid] && pacs[sid].estado === 0 && pacs[sid].sala === sala.id);
                 if (sigSlotIdx !== -1) {
-                    _iniciarAtencion(sala.id, sala.slots[sigSlotIdx], pacs, sals, pacs[sala.slots[sigSlotIdx]].duracion);
-                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[sala.slots[sigSlotIdx]].nombre} pasa a ser atendido.`);
+                    const siguienteId = sala.slots[sigSlotIdx];
+                    _iniciarAtencion(sala.id, siguienteId, pacs, sals, pacs[siguienteId].duracion);
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} pasa a ser atendido.`);
                     cupoLiberado = false;
                 }
             }
         });
 
-        // Asignar pacientes pendientes si hubo cupo
+        // Asignar pacientes pendientes si hubo cupo (solo los que están en espera sin sala)
         if (cupoLiberado) {
             for (let nivel = 0; nivel <= 4; nivel++) {
                 pacs.forEach(p => {
-                    if (p.nivel === nivel && p.estado === 0 && p.sala === null) {
+                    // Guardia estricta: solo estado=0 (espera), sin sala asignada y no trasladados/atendidos
+                    if (p.nivel === nivel && p.estado === 0 && p.sala === null && !p.trasladoQuirofano) {
                         const reqTipo = _determineTipoSala(p.nivel);
                         let salaAsignada = sals.find(s => s.ocupacion === 0);
                         if (salaAsignada) {
@@ -193,7 +197,7 @@ export const TriageProvider = ({ children }) => {
             estado: 0,
             sala: null,
             slot: null,
-            duracion: nivel === 0 ? 5 : 15 + Math.floor(Math.random() * 45),
+            duracion: nivel === 0 ? 10 : 15 + Math.floor(Math.random() * 45),
             finAtencion: null,
             trasladoQuirofano: nivel === 0,
         };
