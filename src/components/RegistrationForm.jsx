@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function RegistrationForm() {
-  const { registrarPaciente, PREGUNTAS, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES, TIEMPO_TEXTO } = useTriage();
+  const { pacientes, diaActual, registrarPaciente, PREGUNTAS, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES, TIEMPO_TEXTO } = useTriage();
   const [nombre, setNombre] = useState('');
   const [paso, setPaso] = useState(0); // 0 = nombre, 1 = preguntas, 2 = resultado
   const [preguntaActual, setPreguntaActual] = useState(0);
@@ -11,7 +11,14 @@ export default function RegistrationForm() {
 
   const startTriage = (e) => {
     e.preventDefault();
-    if (!nombre.trim()) return alert("Ingrese un nombre válido");
+    const cleanName = nombre.trim();
+    if (!cleanName) return alert("Ingrese un nombre válido");
+
+    const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
+    if (pacientesHoy.some(p => p.nombre.toLowerCase().trim() === cleanName.toLowerCase())) {
+        return alert(`El paciente "${cleanName}" ya fue registrado el día de hoy. Use otro nombre o un identificador único.`);
+    }
+
     setPaso(1);
     setPreguntaActual(0);
   };

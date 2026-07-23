@@ -162,6 +162,11 @@ export const TriageProvider = ({ children }) => {
             return null;
         }
 
+        if (pacientesHoy.some(p => p.nombre.toLowerCase().trim() === nombre.toLowerCase().trim())) {
+            alert(`El paciente "${nombre}" ya fue registrado el día de hoy.`);
+            return null;
+        }
+
         const nuevoPaciente = {
             id: pacientes.length,
             nombre,
