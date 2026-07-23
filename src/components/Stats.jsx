@@ -1,7 +1,7 @@
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function Stats() {
-  const { pacientes, salas, tiempoAbsoluto, diaActual } = useTriage();
+  const { pacientes, salas, diaActual } = useTriage();
 
   const totalPacientes = pacientes.length;
   let enEspera = 0;
@@ -56,7 +56,6 @@ export default function Stats() {
       <div className="card">
         <h3 style={{ marginBottom: '1rem' }}>Información de Jornada</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Día Actual: <strong style={{ color: 'var(--text-main)' }}>{diaActual}</strong></p>
-        <p style={{ color: 'var(--text-muted)' }}>Tiempo transcurrido: <strong style={{ color: 'var(--text-main)' }}>{tiempoAbsoluto} minutos</strong></p>
       </div>
     </div>
   );

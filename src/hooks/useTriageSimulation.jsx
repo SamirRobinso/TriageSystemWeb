@@ -1,13 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const TriageContext = createContext();
 
 // Constants
 const MAX_PACIENTES_POR_DIA = 12;
-const CANTIDAD_SALAS = 5;
 const CAPACIDAD_SALA = 2;
 const PASO_TIEMPO_DEFAULT = 5;
-const STORAGE_KEY = 'triage_digital_state_v2';
+const STORAGE_KEY = 'triage_digital_state_v3';
 
 const PREGUNTAS = [
     "Presenta paro cardiaco, paro respiratorio, shock, sangrado grave o trauma severo?",
@@ -30,57 +29,131 @@ const defaultSalas = [
     { id: 4, tipo: 2, ocupacion: 0, slots: [null, null], actual: null }
 ];
 
-export const TriageProvider = ({ children }) => {
-    // Helper to get initial state from localStorage
-    const getInitialState = () => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) return JSON.parse(saved);
-        } catch (e) {
-            console.error("Error loading state from localStorage", e);
-        }
-        return null;
-    };
+const getInitialState = () => {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+    } catch (e) {
+        console.error("Error loading state from localStorage", e);
+    }
+    return null;
+};
 
+export const TriageProvider = ({ children }) => {
     const savedState = getInitialState();
 
-    const [tiempoAbsoluto, setTiempoAbsoluto] = useState(savedState?.tiempoAbsoluto ?? 0);
-    const [contadorGlobal, setContadorGlobal] = useState(savedState?.contadorGlobal ?? 0);
-    const [diaActual, setDiaActual] = useState(savedState?.diaActual ?? 1);
-    const [pacientes, setPacientes] = useState(savedState?.pacientes ?? []);
-    const [eventLog, setEventLog] = useState(savedState?.eventLog ?? []);
-    const [salas, setSalas] = useState(savedState?.salas ?? defaultSalas);
+    const [diaActual, setDiaActual]           = useState(savedState?.diaActual ?? 1);
+    const [pacientes, setPacientes]           = useState(savedState?.pacientes ?? []);
+    const [eventLog, setEventLog]             = useState(savedState?.eventLog ?? []);
+    const [salas, setSalas]                   = useState(savedState?.salas ?? defaultSalas);
 
-    // Persist to localStorage whenever state changes
+    // Persist to localStorage
     useEffect(() => {
-        const stateToSave = {
-            tiempoAbsoluto,
-            contadorGlobal,
-            diaActual,
-            pacientes,
-            eventLog,
-            salas
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    }, [tiempoAbsoluto, contadorGlobal, diaActual, pacientes, eventLog, salas]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ diaActual, pacientes, eventLog, salas }));
+    }, [diaActual, pacientes, eventLog, salas]);
 
-    const addLog = (msg) => {
-        setEventLog(prev => [{ time: tiempoAbsoluto, msg }, ...prev]);
+    // ─── Internal helpers that receive current state as arguments ────────────
+
+    const _addLog = (logList, msg) => [{ msg }, ...logList];
+
+    const _determineTipoSala = (nivel) => nivel <= 1 ? 0 : 1;
+
+    const _iniciarAtencion = (sId, pId, pacs, sals, duracion) => {
+        sals[sId].actual = pId;
+        pacs[pId].estado = 1;
+        pacs[pId].finAtencion = duracion;   // steps remaining
     };
 
-    const resetSimulacion = () => {
-        if (window.confirm("¿Seguro que deseas reiniciar toda la simulación? Se borrarán los datos de pacientes y tiempo.")) {
-            localStorage.removeItem(STORAGE_KEY);
-            setTiempoAbsoluto(0);
-            setContadorGlobal(0);
-            setDiaActual(1);
-            setPacientes([]);
-            setEventLog([]);
-            setSalas(defaultSalas);
+    const _ocuparSlot = (pId, sId, pacs, sals) => {
+        const slotIdx = sals[sId].slots.findIndex(s => s === null);
+        if (slotIdx === -1) return;
+        sals[sId].slots[slotIdx] = pId;
+        sals[sId].ocupacion++;
+        pacs[pId].sala = sId;
+        pacs[pId].slot = slotIdx;
+        if (sals[sId].actual === null) {
+            _iniciarAtencion(sId, pId, pacs, sals, pacs[pId].duracion);
+        } else {
+            pacs[pId].estado = 0;
         }
     };
 
-    const determineTipoSalaRequerido = (nivel) => (nivel <= 1 ? 0 : 1);
+    // ─── Avanzar tiempo ──────────────────────────────────────────────────────
+
+    const avanzarTiempo = () => {
+        let pacs  = pacientes.map(p => ({ ...p }));
+        let sals  = salas.map(s => ({ ...s, slots: [...s.slots] }));
+        let logs  = [...eventLog];
+        let cupoLiberado = false;
+
+        sals.forEach(sala => {
+            if (sala.actual === null) return;
+            const pId = sala.actual;
+            const p = pacs[pId];
+
+            // Decrease remaining steps
+            p.finAtencion = (p.finAtencion ?? p.duracion) - PASO_TIEMPO_DEFAULT;
+
+            if (p.finAtencion <= 0) {
+                // Finalizar atención
+                logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`);
+
+                if (p.trasladoQuirofano) {
+                    logs = _addLog(logs, `${p.nombre} trasladado a quirófano.`);
+                    p.estado = 3;
+                    p.trasladoQuirofano = false;
+                } else {
+                    p.estado = 2;
+                }
+
+                sala.slots[p.slot] = null;
+                sala.ocupacion = Math.max(0, sala.ocupacion - 1);
+                p.sala  = null;
+                p.slot  = null;
+                sala.actual = null;
+                cupoLiberado = true;
+
+                // Promover compañero en espera
+                const sigSlotIdx = sala.slots.findIndex(sid => sid !== null && pacs[sid].estado === 0);
+                if (sigSlotIdx !== -1) {
+                    _iniciarAtencion(sala.id, sala.slots[sigSlotIdx], pacs, sals, pacs[sala.slots[sigSlotIdx]].duracion);
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[sala.slots[sigSlotIdx]].nombre} pasa a ser atendido.`);
+                    cupoLiberado = false;
+                }
+            }
+        });
+
+        // Asignar pacientes pendientes si hubo cupo
+        if (cupoLiberado) {
+            for (let nivel = 0; nivel <= 4; nivel++) {
+                pacs.forEach(p => {
+                    if (p.nivel === nivel && p.estado === 0 && p.sala === null) {
+                        const reqTipo = _determineTipoSala(p.nivel);
+                        let salaAsignada = sals.find(s => s.ocupacion === 0);
+                        if (salaAsignada) {
+                            sals[salaAsignada.id].tipo = reqTipo;
+                            _ocuparSlot(p.id, salaAsignada.id, pacs, sals);
+                            if (pacs[p.id].estado === 1)
+                                logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`);
+                        } else {
+                            salaAsignada = sals.find(s => s.tipo === reqTipo && s.ocupacion < CAPACIDAD_SALA);
+                            if (salaAsignada) {
+                                _ocuparSlot(p.id, salaAsignada.id, pacs, sals);
+                                if (pacs[p.id].estado === 1)
+                                    logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        setPacientes(pacs);
+        setSalas(sals);
+        setEventLog(logs);
+    };
+
+    // ─── Registrar paciente ──────────────────────────────────────────────────
 
     const registrarPaciente = (nombre, nivel) => {
         const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
@@ -94,234 +167,138 @@ export const TriageProvider = ({ children }) => {
             nombre,
             nivel,
             dia: diaActual,
-            tiempoRegistro: tiempoAbsoluto,
             estado: 0,
             sala: null,
             slot: null,
             duracion: nivel === 0 ? 5 : 15 + Math.floor(Math.random() * 45),
-            inicioAtencion: null,
             finAtencion: null,
             trasladoQuirofano: nivel === 0,
         };
 
-        let updatedPacientes = [...pacientes, nuevoPaciente];
-        let updatedSalas = [...salas];
-        
+        let pacs = [...pacientes, nuevoPaciente];
+        let sals = salas.map(s => ({ ...s, slots: [...s.slots] }));
+        let logs = [...eventLog];
+
         if (nivel === 0) {
-            let salaAsignada = updatedSalas.find(s => s.tipo === 0 && s.ocupacion < CAPACIDAD_SALA) || updatedSalas.find(s => s.ocupacion === 0);
-            
+            // Resucitación: buscar sala de emergencia con cupo, o libre, o preempcionar
+            let salaAsignada = sals.find(s => s.tipo === 0 && s.ocupacion < CAPACIDAD_SALA)
+                            || sals.find(s => s.ocupacion === 0);
             if (salaAsignada) {
-                const sIdx = salaAsignada.id;
-                updatedSalas[sIdx].tipo = 0;
-                ocuparSlot(nuevoPaciente.id, sIdx, updatedPacientes, updatedSalas);
+                sals[salaAsignada.id].tipo = 0;
+                _ocuparSlot(nuevoPaciente.id, salaAsignada.id, pacs, sals);
+                logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
             } else {
-                let salaPreemp = updatedSalas.find(s => s.actual !== null && s.tipo === 0) || updatedSalas.find(s => s.actual !== null);
+                // Preempcionar
+                let salaPreemp = sals.find(s => s.actual !== null && s.tipo === 0) || sals.find(s => s.actual !== null);
                 if (salaPreemp) {
-                    const victimaId = salaPreemp.actual;
-                    updatedPacientes[victimaId].estado = 0;
-                    addLog(`${updatedPacientes[victimaId].nombre} desplazado a espera por ${nombre} (Resucitación).`);
-                    
-                    const slotV = updatedPacientes[victimaId].slot;
-                    updatedSalas[salaPreemp.id].slots[slotV] = null;
-                    updatedSalas[salaPreemp.id].ocupacion--;
-                    updatedPacientes[victimaId].sala = null;
-                    updatedPacientes[victimaId].slot = null;
-                    updatedSalas[salaPreemp.id].actual = null;
-                    
-                    updatedSalas[salaPreemp.id].tipo = 0;
-                    ocuparSlot(nuevoPaciente.id, salaPreemp.id, updatedPacientes, updatedSalas);
+                    const vicId = salaPreemp.actual;
+                    logs = _addLog(logs, `Sala ${salaPreemp.id + 1}: ${pacs[vicId].nombre} desplazado por ${nombre} (Resucitación).`);
+                    pacs[vicId].estado = 0;
+                    sals[salaPreemp.id].slots[pacs[vicId].slot] = null;
+                    sals[salaPreemp.id].ocupacion--;
+                    pacs[vicId].sala = null;
+                    pacs[vicId].slot = null;
+                    sals[salaPreemp.id].actual = null;
+                    sals[salaPreemp.id].tipo = 0;
+                    _ocuparSlot(nuevoPaciente.id, salaPreemp.id, pacs, sals);
+                    logs = _addLog(logs, `Sala ${salaPreemp.id + 1}: ${nombre} (Resucitación) pasa a atención inmediata.`);
                 } else {
-                    addLog(`${nombre} (Resucitación) en espera (sin cupo).`);
+                    logs = _addLog(logs, `${nombre} (Resucitación) en espera: sin cupo disponible.`);
                 }
             }
         } else {
-            const reqTipo = determineTipoSalaRequerido(nivel);
-            let salaAsignada = updatedSalas.find(s => s.ocupacion === 0);
+            const reqTipo = _determineTipoSala(nivel);
+            let salaAsignada = sals.find(s => s.ocupacion === 0);
             if (salaAsignada) {
-                updatedSalas[salaAsignada.id].tipo = reqTipo;
+                sals[salaAsignada.id].tipo = reqTipo;
+                _ocuparSlot(nuevoPaciente.id, salaAsignada.id, pacs, sals);
+                if (pacs[nuevoPaciente.id].estado === 1)
+                    logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} pasa a ser atendido.`);
+                else
+                    logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} en espera dentro de la sala.`);
             } else {
-                salaAsignada = updatedSalas.find(s => s.tipo === reqTipo && s.ocupacion < CAPACIDAD_SALA);
-            }
-            
-            if (salaAsignada) {
-                ocuparSlot(nuevoPaciente.id, salaAsignada.id, updatedPacientes, updatedSalas);
+                salaAsignada = sals.find(s => s.tipo === reqTipo && s.ocupacion < CAPACIDAD_SALA);
+                if (salaAsignada) {
+                    _ocuparSlot(nuevoPaciente.id, salaAsignada.id, pacs, sals);
+                    if (pacs[nuevoPaciente.id].estado === 1)
+                        logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} pasa a ser atendido.`);
+                    else
+                        logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${nombre} en espera dentro de la sala.`);
+                } else {
+                    logs = _addLog(logs, `${nombre} en espera: sin cupo físico disponible.`);
+                }
             }
         }
 
-        setPacientes(updatedPacientes);
-        setSalas(updatedSalas);
+        setPacientes(pacs);
+        setSalas(sals);
+        setEventLog(logs);
         return nuevoPaciente;
     };
 
-    const ocuparSlot = (pId, sId, currentPacientes, currentSalas) => {
-        const slotIdx = currentSalas[sId].slots.findIndex(s => s === null);
-        if (slotIdx !== -1) {
-            currentSalas[sId].slots[slotIdx] = pId;
-            currentSalas[sId].ocupacion++;
-            currentPacientes[pId].sala = sId;
-            currentPacientes[pId].slot = slotIdx;
-            
-            if (currentSalas[sId].actual === null) {
-                iniciarAtencion(sId, pId, currentPacientes, currentSalas);
-            } else {
-                currentPacientes[pId].estado = 0;
-            }
-        }
-    };
-
-    const iniciarAtencion = (sId, pId, currentPacientes, currentSalas) => {
-        currentSalas[sId].actual = pId;
-        currentPacientes[pId].estado = 1;
-        currentPacientes[pId].inicioAtencion = tiempoAbsoluto;
-        currentPacientes[pId].finAtencion = tiempoAbsoluto + currentPacientes[pId].duracion;
-        addLog(`En sala ${sId + 1}, ${currentPacientes[pId].nombre} pasa a ser atendido.`);
-    };
-
-    const avanzarTiempo = () => {
-        const nuevoTiempo = tiempoAbsoluto + PASO_TIEMPO_DEFAULT;
-        const nuevoContadorDia = contadorGlobal + PASO_TIEMPO_DEFAULT;
-
-        let updatedPacientes = [...pacientes];
-        let updatedSalas = [...salas];
-        let cupoLiberado = false;
-
-        updatedSalas.forEach(sala => {
-            if (sala.actual !== null) {
-                const pId = sala.actual;
-                if (nuevoTiempo >= updatedPacientes[pId].finAtencion) {
-                    const p = updatedPacientes[pId];
-                    const espera = Math.max(0, p.inicioAtencion - p.tiempoRegistro);
-                    addLog(`En sala ${sala.id + 1}, ${p.nombre} fue atendido (${espera}m espera, ${p.duracion}m atención).`);
-                    
-                    if (p.trasladoQuirofano) {
-                        addLog(`${p.nombre} trasladado a quirófano.`);
-                        p.estado = 3;
-                        p.trasladoQuirofano = false;
-                    } else {
-                        p.estado = 2;
-                    }
-                    
-                    sala.slots[p.slot] = null;
-                    sala.ocupacion--;
-                    p.sala = null;
-                    p.slot = null;
-                    sala.actual = null;
-                    cupoLiberado = true;
-
-                    const sigSlot = sala.slots.findIndex(sid => sid !== null && updatedPacientes[sid].estado === 0);
-                    if (sigSlot !== -1) {
-                        iniciarAtencion(sala.id, sala.slots[sigSlot], updatedPacientes, updatedSalas);
-                        cupoLiberado = false;
-                    }
-                }
-            }
-        });
-
-        if (cupoLiberado) {
-            for (let nivelBuscado = 0; nivelBuscado <= 4; nivelBuscado++) {
-                updatedPacientes.forEach(p => {
-                    if (p.nivel === nivelBuscado && p.estado === 0 && p.sala === null) {
-                        const reqTipo = determineTipoSalaRequerido(p.nivel);
-                        let salaAsignada = updatedSalas.find(s => s.ocupacion === 0);
-                        if (salaAsignada) {
-                            updatedSalas[salaAsignada.id].tipo = reqTipo;
-                            ocuparSlot(p.id, salaAsignada.id, updatedPacientes, updatedSalas);
-                        } else {
-                            salaAsignada = updatedSalas.find(s => s.tipo === reqTipo && s.ocupacion < CAPACIDAD_SALA);
-                            if (salaAsignada) ocuparSlot(p.id, salaAsignada.id, updatedPacientes, updatedSalas);
-                        }
-                    }
-                });
-            }
-        }
-
-        setPacientes(updatedPacientes);
-        setSalas(updatedSalas);
-        setTiempoAbsoluto(nuevoTiempo);
-        setContadorGlobal(nuevoContadorDia);
-    };
-
-    const [isRunning, setIsRunning] = useState(false);
-    const [speed, setSpeed] = useState(2000); // 2s per 5 min step
-
-    // Auto timer effect
-    useEffect(() => {
-        let interval = null;
-        if (isRunning) {
-            interval = setInterval(() => {
-                avanzarTiempo();
-            }, speed);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [isRunning, speed, tiempoAbsoluto, pacientes, salas]);
-
-    const toggleRunning = () => setIsRunning(prev => !prev);
+    // ─── Liberar paciente manualmente ────────────────────────────────────────
 
     const liberarPaciente = (pId) => {
-        let updatedPacientes = [...pacientes];
-        let updatedSalas = [...salas];
-        const p = updatedPacientes[pId];
-
+        let pacs = pacientes.map(p => ({ ...p }));
+        let sals = salas.map(s => ({ ...s, slots: [...s.slots] }));
+        let logs = [...eventLog];
+        const p = pacs[pId];
         if (!p) return;
 
-        if (p.estado === 1) { // Being attended
+        if (p.estado === 1 || p.estado === 0) {
             const sId = p.sala;
             if (sId !== null && sId !== undefined) {
-                const sala = updatedSalas[sId];
+                const sala = sals[sId];
                 sala.slots[p.slot] = null;
                 sala.ocupacion = Math.max(0, sala.ocupacion - 1);
                 if (sala.actual === pId) sala.actual = null;
-                p.sala = null;
-                p.slot = null;
-                p.estado = 2; // Atendido
-                addLog(`Paciente ${p.nombre} fue liberado manualmente de la Sala ${sId + 1}.`);
 
-                // Promote waiting
-                const sigSlot = sala.slots.findIndex(sid => sid !== null && updatedPacientes[sid].estado === 0);
-                if (sigSlot !== -1) {
-                    iniciarAtencion(sId, sala.slots[sigSlot], updatedPacientes, updatedSalas);
+                // Promover compañero
+                const sigSlotIdx = sala.slots.findIndex(sid => sid !== null && pacs[sid].estado === 0);
+                if (sigSlotIdx !== -1) {
+                    _iniciarAtencion(sId, sala.slots[sigSlotIdx], pacs, sals, pacs[sala.slots[sigSlotIdx]].duracion);
+                    logs = _addLog(logs, `Sala ${sId + 1}: ${pacs[sala.slots[sigSlotIdx]].nombre} pasa a ser atendido.`);
                 }
             }
-        } else if (p.estado === 0) { // Waiting
-            if (p.sala !== null && p.sala !== undefined) {
-                const sId = p.sala;
-                const sala = updatedSalas[sId];
-                sala.slots[p.slot] = null;
-                sala.ocupacion = Math.max(0, sala.ocupacion - 1);
-                p.sala = null;
-                p.slot = null;
-            }
-            p.estado = 2; // Atendido (liberación administrativa)
-            addLog(`Paciente ${p.nombre} fue liberado manualmente (excepción administrativa).`);
+            p.sala  = null;
+            p.slot  = null;
+            p.estado = 2;
+            logs = _addLog(logs, `${p.nombre} fue liberado manualmente.`);
         } else {
-            alert("El paciente no se encuentra en estado de espera ni de atención.");
+            alert("El paciente ya fue atendido o trasladado.");
             return;
         }
 
-        setPacientes(updatedPacientes);
-        setSalas(updatedSalas);
+        setPacientes(pacs);
+        setSalas(sals);
+        setEventLog(logs);
     };
 
+    // ─── Finalizar día ───────────────────────────────────────────────────────
+
     const finalizarDia = () => {
-        addLog(`Día ${diaActual} finalizado. Reloj del día reiniciado a 0 min.`);
+        setEventLog(prev => _addLog(prev, `Día ${diaActual} finalizado.`));
         setDiaActual(prev => prev + 1);
-        setContadorGlobal(0);
+    };
+
+    // ─── Reiniciar simulación ────────────────────────────────────────────────
+
+    const resetSimulacion = () => {
+        if (window.confirm("¿Reiniciar toda la simulación? Se perderán todos los datos.")) {
+            localStorage.removeItem(STORAGE_KEY);
+            setDiaActual(1);
+            setPacientes([]);
+            setEventLog([]);
+            setSalas(defaultSalas.map(s => ({ ...s, slots: [null, null] })));
+        }
     };
 
     return (
         <TriageContext.Provider value={{
-            tiempoAbsoluto,
-            contadorGlobal,
             diaActual,
             pacientes,
             salas,
             eventLog,
-            isRunning,
-            toggleRunning,
-            speed,
-            setSpeed,
             avanzarTiempo,
             registrarPaciente,
             liberarPaciente,

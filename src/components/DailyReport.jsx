@@ -2,7 +2,7 @@ import { useTriage } from '../hooks/useTriageSimulation';
 import { CalendarCheck, ArrowRight } from 'lucide-react';
 
 export default function DailyReport() {
-  const { pacientes, diaActual, contadorGlobal, finalizarDia, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES } = useTriage();
+  const { pacientes, diaActual, finalizarDia, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES } = useTriage();
 
   const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
 
@@ -41,7 +41,7 @@ export default function DailyReport() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h2>Reporte de Fin de Día</h2>
-          <p className="subtitle">Resumen diario del Día {diaActual} • Tiempo transcurrido hoy: {contadorGlobal} min</p>
+          <p className="subtitle">Resumen del Día {diaActual}</p>
         </div>
         <button 
           className="btn-primary" 

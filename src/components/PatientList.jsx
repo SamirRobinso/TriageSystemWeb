@@ -1,14 +1,14 @@
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function PatientList() {
-  const { pacientes, TIPO_URGENCIA, HEX_COLORES, tiempoAbsoluto, liberarPaciente } = useTriage();
+  const { pacientes, TIPO_URGENCIA, HEX_COLORES, liberarPaciente } = useTriage();
 
   const getEstadoTexto = (paciente) => {
     switch (paciente.estado) {
       case 0:
         return paciente.sala !== null ? `Espera (Sala ${paciente.sala + 1})` : 'Espera (Sin cupo)';
       case 1:
-        return `Atendiéndose (Quedan ${Math.max(0, paciente.finAtencion - tiempoAbsoluto)}m)`;
+        return `Atendiéndose (Quedan ~${Math.max(0, paciente.finAtencion ?? 0)}m)`;
       case 2:
         return 'Atendido';
       case 3:
