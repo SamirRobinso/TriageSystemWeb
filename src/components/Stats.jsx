@@ -40,6 +40,10 @@ export default function Stats() {
           <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#94a3b8' }}>{atendidos}</div>
           <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Atendidos</div>
         </div>
+        <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
+          <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#ef4444' }}>{trasladados}</div>
+          <div style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>En Quirófano</div>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '2rem' }}>
@@ -56,7 +60,6 @@ export default function Stats() {
       <div className="card">
         <h3 style={{ marginBottom: '1rem' }}>Información de Jornada</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Día Actual: <strong style={{ color: 'var(--text-main)' }}>{diaActual}</strong></p>
-        <p style={{ color: 'var(--text-muted)' }}>Pacientes en Quirófano: <strong style={{ color: '#ef4444' }}>{trasladados}</strong></p>
       </div>
     </div>
   );
