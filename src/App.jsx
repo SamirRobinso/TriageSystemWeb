@@ -7,9 +7,11 @@ import PatientList from './components/PatientList';
 import EventLog from './components/EventLog';
 import Stats from './components/Stats';
 import DailyReport from './components/DailyReport';
+import { RotateCcw } from 'lucide-react';
+
 function App() {
   const [activeTab, setActiveTab] = useState('register');
-  const { diaActual } = useTriage();
+  const { diaActual, resetSimulacion } = useTriage();
 
   return (
     <div className="app-container">
@@ -20,6 +22,18 @@ function App() {
           <div>
             <h1>Triage Digital - Día {diaActual}</h1>
             <p className="subtitle">Simulación de Recepción y Salas</p>
+          </div>
+          <div className="time-controls">
+            <button
+              className="btn-outline"
+              onClick={resetSimulacion}
+              title="Reiniciar Simulación"
+              style={{ padding: '0.6rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: '#ef4444', color: '#ef4444' }}
+            >
+              <RotateCcw size={16} />
+              <span>Reiniciar</span>
+            </button>
+          </div>
         </header>
 
         <div className="content-area">
