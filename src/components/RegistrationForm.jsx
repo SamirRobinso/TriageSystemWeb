@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTriage } from '../hooks/useTriageSimulation';
 
 export default function RegistrationForm() {
   const { pacientes, diaActual, registrarPaciente, PREGUNTAS, TIPO_URGENCIA, COLOR_NIVEL, HEX_COLORES, TIEMPO_TEXTO } = useTriage();
   const [nombre, setNombre] = useState('');
-  const [nhc, setNhc] = useState('');
   const [paso, setPaso] = useState(0); // 0 = nombre/nhc, 1 = preguntas, 2 = resultado
   const [preguntaActual, setPreguntaActual] = useState(0);
   const [nivelCalculado, setNivelCalculado] = useState(null);
   const [pacienteRegistrado, setPacienteRegistrado] = useState(null);
+  const nhcRef = useRef('');
+  const yaRegistrandoRef = useRef(false);
 
   const MAX_PACIENTES_POR_DIA = 12;
 
@@ -33,9 +34,8 @@ export default function RegistrationForm() {
     // Auto-generar NHC: iniciales + 4 números aleatorios
     const iniciales = cleanName.split(' ').filter(w => w.length > 0).map(w => w[0].toUpperCase()).join('').substring(0, 3);
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const autoNhc = `${iniciales}-${randomNum}`;
-    
-    setNhc(autoNhc);
+    nhcRef.current = `${iniciales}-${randomNum}`;
+    yaRegistrandoRef.current = false;
     setPaso(1);
     setPreguntaActual(0);
   };
@@ -53,22 +53,27 @@ export default function RegistrationForm() {
   };
 
   const finalizarTriage = (nivel) => {
+    // Guard: evitar doble registro (StrictMode o doble click)
+    if (yaRegistrandoRef.current) return;
+    yaRegistrandoRef.current = true;
+
     setNivelCalculado(nivel);
-    const paciente = registrarPaciente(nombre.trim(), nhc.trim(), nivel);
+    const paciente = registrarPaciente(nombre.trim(), nhcRef.current, nivel);
     if (paciente) {
       setPacienteRegistrado(paciente);
       setPaso(2);
     } else {
       // Limit reached or duplicate
+      yaRegistrandoRef.current = false;
       setPaso(0);
       setNombre('');
-      setNhc('');
     }
   };
 
   const resetForm = () => {
     setNombre('');
-    setNhc('');
+    nhcRef.current = '';
+    yaRegistrandoRef.current = false;
     setPaso(0);
     setNivelCalculado(null);
     setPacienteRegistrado(null);
