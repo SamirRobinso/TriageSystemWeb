@@ -42,10 +42,10 @@ const getInitialState = () => {
 export const TriageProvider = ({ children }) => {
     const savedState = getInitialState();
 
-    const [diaActual, setDiaActual]           = useState(savedState?.diaActual ?? 1);
-    const [pacientes, setPacientes]           = useState(savedState?.pacientes ?? []);
-    const [eventLog, setEventLog]             = useState(savedState?.eventLog ?? []);
-    const [salas, setSalas]                   = useState(savedState?.salas ?? defaultSalas);
+    const [diaActual, setDiaActual] = useState(savedState?.diaActual ?? 1);
+    const [pacientes, setPacientes] = useState(savedState?.pacientes ?? []);
+    const [eventLog, setEventLog] = useState(savedState?.eventLog ?? []);
+    const [salas, setSalas] = useState(savedState?.salas ?? defaultSalas);
 
     // Persist to localStorage
     useEffect(() => {
@@ -81,9 +81,9 @@ export const TriageProvider = ({ children }) => {
     // ─── Avanzar tiempo ──────────────────────────────────────────────────────
 
     const avanzarTiempo = () => {
-        let pacs  = pacientes.map(p => ({ ...p }));
-        let sals  = salas.map(s => ({ ...s, slots: [...s.slots] }));
-        let logs  = [...eventLog];
+        let pacs = pacientes.map(p => ({ ...p }));
+        let sals = salas.map(s => ({ ...s, slots: [...s.slots] }));
+        let logs = [...eventLog];
         let cupoLiberado = false;
 
         sals.forEach(sala => {
@@ -108,8 +108,8 @@ export const TriageProvider = ({ children }) => {
 
                 sala.slots[p.slot] = null;
                 sala.ocupacion = Math.max(0, sala.ocupacion - 1);
-                p.sala  = null;
-                p.slot  = null;
+                p.sala = null;
+                p.slot = null;
                 sala.actual = null;
                 cupoLiberado = true;
 
@@ -175,14 +175,14 @@ export const TriageProvider = ({ children }) => {
             trasladoQuirofano: nivel === 0,
         };
 
-        let pacs = [...pacientes, nuevoPaciente];
+        let pacs = [...pacientes.map(p => ({ ...p })), { ...nuevoPaciente }];
         let sals = salas.map(s => ({ ...s, slots: [...s.slots] }));
         let logs = [...eventLog];
 
         if (nivel === 0) {
             // Resucitación: buscar sala de emergencia con cupo, o libre, o preempcionar
             let salaAsignada = sals.find(s => s.tipo === 0 && s.ocupacion < CAPACIDAD_SALA)
-                            || sals.find(s => s.ocupacion === 0);
+                || sals.find(s => s.ocupacion === 0);
             if (salaAsignada) {
                 sals[salaAsignada.id].tipo = 0;
                 _ocuparSlot(nuevoPaciente.id, salaAsignada.id, pacs, sals);
@@ -260,8 +260,8 @@ export const TriageProvider = ({ children }) => {
                     logs = _addLog(logs, `Sala ${sId + 1}: ${pacs[sala.slots[sigSlotIdx]].nombre} pasa a ser atendido.`);
                 }
             }
-            p.sala  = null;
-            p.slot  = null;
+            p.sala = null;
+            p.slot = null;
             p.estado = 2;
             logs = _addLog(logs, `${p.nombre} fue liberado manualmente.`);
         } else {
