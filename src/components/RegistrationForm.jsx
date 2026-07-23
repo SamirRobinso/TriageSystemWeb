@@ -13,14 +13,14 @@ export default function RegistrationForm() {
   const startTriage = (e) => {
     e.preventDefault();
     const cleanName = nombre.trim();
-    const cleanNhc = nhc.trim();
     if (!cleanName) return alert("Ingrese un nombre válido");
-    if (!cleanNhc) return alert("Ingrese un NHC válido");
 
-    const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
-    if (pacientesHoy.some(p => p.nhc.trim() === cleanNhc)) {
-        return alert(`El paciente con NHC "${cleanNhc}" ya fue registrado el día de hoy.`);
-    }
+    // Auto-generar NHC: iniciales + 4 números aleatorios
+    const iniciales = cleanName.split(' ').filter(w => w.length > 0).map(w => w[0].toUpperCase()).join('').substring(0, 3);
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const autoNhc = `${iniciales}-${randomNum}`;
+    
+    setNhc(autoNhc);
 
     setPaso(1);
     setPreguntaActual(0);
@@ -66,18 +66,7 @@ export default function RegistrationForm() {
       
       {paso === 0 && (
         <form onSubmit={startTriage}>
-          <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <label className="form-label">Número de Historia Clínica (NHC)</label>
-            <input 
-              type="text" 
-              className="form-input" 
-              value={nhc} 
-              onChange={e => setNhc(e.target.value)}
-              placeholder="Ej. 1700000000"
-              autoFocus
-            />
-          </div>
-          <div className="form-group">
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label className="form-label">Nombre del Paciente</label>
             <input 
               type="text" 
@@ -85,6 +74,7 @@ export default function RegistrationForm() {
               value={nombre} 
               onChange={e => setNombre(e.target.value)}
               placeholder="Ej. Juan Perez"
+              autoFocus
             />
           </div>
           <button type="submit" className="btn-primary">Iniciar Triage</button>
