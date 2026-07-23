@@ -6,7 +6,7 @@ const TriageContext = createContext();
 const MAX_PACIENTES_POR_DIA = 12;
 const CAPACIDAD_SALA = 2;
 const PASO_TIEMPO_DEFAULT = 5;
-const STORAGE_KEY = 'triage_digital_state_v4';
+const STORAGE_KEY = 'triage_digital_state_v5';
 
 const PREGUNTAS = [
     "Presenta paro cardiaco, paro respiratorio, shock, sangrado grave o trauma severo?",
@@ -43,18 +43,19 @@ export const TriageProvider = ({ children }) => {
     const savedState = getInitialState();
 
     const [diaActual, setDiaActual] = useState(savedState?.diaActual ?? 1);
+    const [minutoActual, setMinutoActual] = useState(savedState?.minutoActual ?? 0);
     const [pacientes, setPacientes] = useState(savedState?.pacientes ?? []);
     const [eventLog, setEventLog] = useState(savedState?.eventLog ?? []);
     const [salas, setSalas] = useState(savedState?.salas ?? defaultSalas);
 
     // Persist to localStorage
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ diaActual, pacientes, eventLog, salas }));
-    }, [diaActual, pacientes, eventLog, salas]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ diaActual, minutoActual, pacientes, eventLog, salas }));
+    }, [diaActual, minutoActual, pacientes, eventLog, salas]);
 
     // ─── Internal helpers that receive current state as arguments ────────────
 
-    const _addLog = (logList, msg) => [{ msg }, ...logList];
+    const _addLog = (logList, msg, min = minutoActual) => [{ msg, time: min }, ...logList];
 
     const _determineTipoSala = (nivel) => nivel <= 1 ? 0 : 1;
 
@@ -87,6 +88,9 @@ export const TriageProvider = ({ children }) => {
         let sals = salas.map(s => ({ ...s, slots: [...s.slots] }));
         let logs = [...eventLog];
         let cupoLiberado = false;
+        
+        const nuevoMinuto = minutoActual + PASO_TIEMPO_DEFAULT;
+        setMinutoActual(nuevoMinuto);
 
         sals.forEach(sala => {
             if (sala.actual === null) return;
@@ -319,6 +323,7 @@ export const TriageProvider = ({ children }) => {
         if (window.confirm("¿Reiniciar toda la simulación? Se perderán todos los datos.")) {
             localStorage.removeItem(STORAGE_KEY);
             setDiaActual(1);
+            setMinutoActual(0);
             setPacientes([]);
             setEventLog([]);
             setSalas(defaultSalas.map(s => ({ ...s, slots: [null, null] })));
@@ -327,7 +332,7 @@ export const TriageProvider = ({ children }) => {
 
     return (
         <TriageContext.Provider value={{
-            diaActual,
+            diaActual, setDiaActual, minutoActual,
             pacientes,
             salas,
             eventLog,
