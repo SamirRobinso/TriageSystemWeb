@@ -10,10 +10,25 @@ export default function RegistrationForm() {
   const [nivelCalculado, setNivelCalculado] = useState(null);
   const [pacienteRegistrado, setPacienteRegistrado] = useState(null);
 
+  const MAX_PACIENTES_POR_DIA = 12;
+
   const startTriage = (e) => {
     e.preventDefault();
     const cleanName = nombre.trim();
-    if (!cleanName) return alert("Ingrese un nombre válido");
+    if (!cleanName) return alert("Ingrese un nombre válido.");
+
+    // Validar límite diario antes de pasar a las preguntas
+    const pacientesHoy = pacientes.filter(p => p.dia === diaActual);
+    if (pacientesHoy.length >= MAX_PACIENTES_POR_DIA) {
+      alert(`Límite diario de ${MAX_PACIENTES_POR_DIA} pacientes alcanzado.`);
+      return;
+    }
+
+    // Validar nombre duplicado en el día antes de pasar a las preguntas
+    if (pacientesHoy.some(p => p.nombre.trim().toLowerCase() === cleanName.toLowerCase())) {
+      alert(`El paciente "${cleanName}" ya fue registrado el día de hoy.`);
+      return;
+    }
 
     // Auto-generar NHC: iniciales + 4 números aleatorios
     const iniciales = cleanName.split(' ').filter(w => w.length > 0).map(w => w[0].toUpperCase()).join('').substring(0, 3);
@@ -21,7 +36,6 @@ export default function RegistrationForm() {
     const autoNhc = `${iniciales}-${randomNum}`;
     
     setNhc(autoNhc);
-
     setPaso(1);
     setPreguntaActual(0);
   };
