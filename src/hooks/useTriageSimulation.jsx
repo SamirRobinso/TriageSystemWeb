@@ -105,11 +105,11 @@ export const TriageProvider = ({ children }) => {
                 const slotAnterior = p.slot;
 
                 if (p.trasladoQuirofano) {
-                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} atendido — internado.`);
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} atendido — internado.`, nuevoMinuto);
                     p.estado = 3;
                     p.trasladoQuirofano = false;
                 } else {
-                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`);
+                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${p.nombre} finalizó atención.`, nuevoMinuto);
                     p.estado = 2;
                 }
 
@@ -128,9 +128,9 @@ export const TriageProvider = ({ children }) => {
                     const fuePausado = pacs[siguienteId].finAtencion !== null && pacs[siguienteId].finAtencion !== undefined;
                     _iniciarAtencion(sala.id, siguienteId, pacs, sals, pacs[siguienteId].duracion);
                     if (fuePausado) {
-                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} reanuda su atención (${pacs[siguienteId].finAtencion} min restantes).`);
+                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} reanuda su atención (${pacs[siguienteId].finAtencion} min restantes).`, nuevoMinuto);
                     } else {
-                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} pasa a ser atendido.`);
+                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} pasa a ser atendido.`, nuevoMinuto);
                     }
                     cupoLiberado = false;
                 }
@@ -149,13 +149,13 @@ export const TriageProvider = ({ children }) => {
                             sals[salaAsignada.id].tipo = reqTipo;
                             _ocuparSlot(p.id, salaAsignada.id, pacs, sals);
                             if (pacs[p.id].estado === 1)
-                                logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`);
+                                logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`, nuevoMinuto);
                         } else {
                             salaAsignada = sals.find(s => s.tipo === reqTipo && s.ocupacion < CAPACIDAD_SALA);
                             if (salaAsignada) {
                                 _ocuparSlot(p.id, salaAsignada.id, pacs, sals);
                                 if (pacs[p.id].estado === 1)
-                                    logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`);
+                                    logs = _addLog(logs, `Sala ${salaAsignada.id + 1}: ${p.nombre} pasa a ser atendido.`, nuevoMinuto);
                             }
                         }
                     }
