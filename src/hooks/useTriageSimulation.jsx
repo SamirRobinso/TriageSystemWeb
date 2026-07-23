@@ -121,8 +121,13 @@ export const TriageProvider = ({ children }) => {
                 const sigSlotIdx = sala.slots.findIndex(sid => sid !== null && pacs[sid] && pacs[sid].estado === 0 && pacs[sid].sala === sala.id);
                 if (sigSlotIdx !== -1) {
                     const siguienteId = sala.slots[sigSlotIdx];
+                    const fuePausado = pacs[siguienteId].finAtencion !== null && pacs[siguienteId].finAtencion !== undefined;
                     _iniciarAtencion(sala.id, siguienteId, pacs, sals, pacs[siguienteId].duracion);
-                    logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} pasa a ser atendido.`);
+                    if (fuePausado) {
+                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} reanuda su atención (${pacs[siguienteId].finAtencion} min restantes).`);
+                    } else {
+                        logs = _addLog(logs, `Sala ${sala.id + 1}: ${pacs[siguienteId].nombre} pasa a ser atendido.`);
+                    }
                     cupoLiberado = false;
                 }
             }
