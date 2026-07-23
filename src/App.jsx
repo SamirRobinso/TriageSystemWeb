@@ -11,7 +11,7 @@ import { RotateCcw } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState('register');
-  const { diaActual, avanzarTiempo, resetSimulacion } = useTriage();
+  const { diaActual, resetSimulacion } = useTriage();
 
   return (
     <div className="app-container">
@@ -24,9 +24,6 @@ function App() {
             <p className="subtitle">Simulación de Recepción y Salas</p>
           </div>
           <div className="time-controls">
-            <button className="btn-primary" onClick={avanzarTiempo} title="Avanzar 5 minutos simulados">
-              Avanzar 5 min
-            </button>
             <button
               className="btn-outline"
               onClick={resetSimulacion}
